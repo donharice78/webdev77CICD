@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 RUN docker-php-ext-install zip
 
 # Copy only composer files for efficient dependency installation
-COPY composer.json composer.lock symfony.lock ./
+COPY composer.json composer.lock symfony.lock ./ 
 
 # Initial install without scripts
 RUN composer install \
@@ -35,6 +35,7 @@ RUN set -e; \
         composer run-script post-install-cmd --no-interaction -vvv || \
         (echo "Warning: post-install-cmd failed but continuing build"; exit 0); \
     fi
+
 
 # Stage 2: Node.js build stage
 FROM node:18-alpine as node_builder
@@ -59,7 +60,8 @@ RUN set -e; \
     apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
-# Stage 3: Production stage
+
+# Stage 3: Production stage (with fixed PHP extensions)
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
@@ -105,12 +107,11 @@ RUN mkdir -p /usr/local/etc/php/conf.d && \
     mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
 
-# Fixed PHP-FPM config handling
+# Use a conditional RUN statement to handle the missing file.
 RUN if [ -f docker/php/php-fpm.d/zz-docker.conf ]; then \
-    cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
+        cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
     else \
-    echo "Using default PHP-FPM configuration"; \
-    touch /usr/local/etc/php-fpm.d/zz-docker.conf; \
+        echo "Using default PHP-FPM configuration"; \
     fi
 
 # Copy built application
