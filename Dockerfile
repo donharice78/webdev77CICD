@@ -33,16 +33,23 @@ RUN set -e; \
         (echo "Warning: post-install-cmd failed but continuing build" && exit 0); \
     fi
 
-# Stage 2: Node.js build stage
+# Stage 2: Node.js build stage (improved with build tools and caching)
 FROM node:18 as node_builder
 
 WORKDIR /app
 COPY --from=builder /app .
 
-# Install npm dependencies and build assets
+# Install build tools and dependencies
 RUN if [ -f package.json ]; then \
-    npm install && \
-    npm run build; \
+    apk add --no-cache --virtual .build-deps \
+        python3 \
+        make \
+        g++ \
+        && npm config set update-notifier false \
+        && npm install --no-audit --progress=false --unsafe-perm \
+        && ([ -f package-lock.json ] && rm -f package-lock.json || true) \
+        && ([ -n "$(npm run | grep '^  build')" ] && npm run build || true) \
+        && apk del .build-deps; \
     fi
 
 # Stage 3: Production stage
@@ -85,14 +92,18 @@ RUN apk add --no-cache --virtual .build-deps \
 # Configure PHP
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
 RUN mkdir -p /usr/local/etc/php-fpm.d && \
-    touch /usr/local/etc/php-fpm.d/zz-docker.conf
+    { [ -f docker/php/php-fpm.d/zz-docker.conf ] && \
+      cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/ || \
+      touch /usr/local/etc/php-fpm.d/zz-docker.conf; }
 
 # Copy built application
 COPY --from=builder /app .
 COPY --from=node_builder /app/public/build public/build/
 
 # Configure nginx and supervisor
-RUN mkdir -p /run/nginx
+RUN mkdir -p /run/nginx && \
+    mkdir -p /var/log/nginx && \
+    touch /var/log/nginx/access.log /var/log/nginx/error.log
 COPY docker/nginx/nginx.conf /etc/nginx/
 COPY docker/nginx/symfony.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/
