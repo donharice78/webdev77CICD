@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 RUN docker-php-ext-install zip
 
 # Copy only composer files for efficient dependency installation
-COPY composer.json composer.lock symfony.lock ./ 
+COPY composer.json composer.lock symfony.lock ./
 
 # Initial install without scripts
 RUN composer install \
@@ -35,7 +35,6 @@ RUN set -e; \
         composer run-script post-install-cmd --no-interaction -vvv || \
         (echo "Warning: post-install-cmd failed but continuing build"; exit 0); \
     fi
-
 
 # Stage 2: Node.js build stage
 FROM node:18-alpine as node_builder
@@ -60,13 +59,12 @@ RUN set -e; \
     apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
-
-# Stage 3: Production stage (with fixed PHP extensions)
+# Stage 3: Production stage
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
 
-# Install runtime dependencies
+# Install runtime dependencies first
 RUN apk add --no-cache \
     acl \
     fcgi \
@@ -79,10 +77,15 @@ RUN apk add --no-cache \
     libxml2 \
     oniguruma
 
-# Install PHP extensions with robust error handling
-RUN set -e; \
+# Install PHP extensions with better error handling
+RUN set -ex; \
     apk add --no-cache --virtual .build-deps \
-        $PHPIZE_DEPS \
+        autoconf \
+        g++ \
+        libtool \
+        make \
+        pcre-dev; \
+    apk add --no-cache \
         libzip-dev \
         libpng-dev \
         libjpeg-turbo-dev \
@@ -98,7 +101,7 @@ RUN set -e; \
         xml \
         intl \
         opcache; \
-    docker-php-source delete; \
+    pecl install -o -f redis && docker-php-ext-enable redis; \
     apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/*
 
@@ -107,11 +110,12 @@ RUN mkdir -p /usr/local/etc/php/conf.d && \
     mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
 
-# Use a conditional RUN statement to handle the missing file.
+# Handle PHP-FPM config
 RUN if [ -f docker/php/php-fpm.d/zz-docker.conf ]; then \
-        cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
+    cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
     else \
-        echo "Using default PHP-FPM configuration"; \
+    echo "Using default PHP-FPM configuration"; \
+    touch /usr/local/etc/php-fpm.d/zz-docker.conf; \
     fi
 
 # Copy built application
