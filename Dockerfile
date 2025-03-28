@@ -33,42 +33,34 @@ RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 RUN set -e; \
     if [ -f bin/console ]; then \
         composer run-script post-install-cmd --no-interaction -vvv || \
-        (echo "Warning: post-install-cmd failed but continuing build" && exit 0); \
+        (echo "Warning: post-install-cmd failed but continuing build"; exit 0); \
     fi
 
-# Stage 2: Node.js build stage (fixed with proper error handling)
+# Stage 2: Node.js build stage
 FROM node:18-alpine as node_builder
 
 WORKDIR /app
 COPY --from=builder /app .
 
-# Install build dependencies separately with error handling
+# Install build dependencies
 RUN apk add --no-cache --virtual .build-deps \
     python3 \
     make \
     g++
 
-# Install npm packages with retry logic
+# Install npm packages
 RUN if [ -f package.json ]; then \
-    echo "Installing Node.js dependencies..." && \
     npm config set update-notifier false && \
-    { npm install --no-audit --progress=false --unsafe-perm || \
-      { echo "First install attempt failed, retrying with clean cache..." && \
-        npm cache clean --force && \
-        npm install --no-audit --progress=false --unsafe-perm; }; } && \
-    echo "Dependencies installed successfully"; \
+    npm install --no-audit --progress=false --unsafe-perm || \
+    (npm cache clean --force && npm install --no-audit --progress=false --unsafe-perm); \
     fi
 
 # Run build script if exists
-RUN if [ -f package.json ] && [ -f node_modules/.bin/webpack ]; then \
-    echo "Running build script..." && \
-    npm run build || \
-    echo "Build script failed but continuing"; \
-    elif [ -f package.json ]; then \
-    echo "No build script found"; \
+RUN if [ -f package.json ] && grep -q '"build"' package.json; then \
+    npm run build || echo "Build script failed but continuing"; \
     fi
 
-# Clean up build dependencies
+# Clean up
 RUN apk del .build-deps && \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
@@ -90,7 +82,7 @@ RUN apk add --no-cache \
     libxml2 \
     oniguruma
 
-# Install build dependencies and PHP extensions
+# Install PHP extensions
 RUN apk add --no-cache --virtual .build-deps \
     libzip-dev \
     libpng-dev \
@@ -114,18 +106,17 @@ RUN apk add --no-cache --virtual .build-deps \
 RUN mkdir -p /usr/local/etc/php/conf.d && \
     mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
-COPY docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/ || \
-    echo "Using default PHP-FPM configuration"
+COPY docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/
 
 # Copy built application
 COPY --from=builder /app .
-COPY --from=node_builder /app/public/build public/build/ || \
-    echo "No frontend assets found"
+RUN if [ -d /app/public/build ]; then \
+    cp -r /app/public/build public/; \
+    else echo "No frontend assets found"; fi
 
 # Configure nginx
 RUN mkdir -p /run/nginx && \
-    mkdir -p /var/log/nginx && \
-    touch /var/log/nginx/access.log /var/log/nginx/error.log
+    mkdir -p /var/log/nginx
 COPY docker/nginx/nginx.conf /etc/nginx/
 COPY docker/nginx/symfony.conf /etc/nginx/conf.d/default.conf
 
