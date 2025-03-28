@@ -6,8 +6,8 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: your-ecr-repo/symfony-app
-  EKS_CLUSTER: your-eks-cluster
+  ECR_REPOSITORY: 954976299895.dkr.ecr.us-east-1.amazonaws.com/webdev77
+  EKS_CLUSTER: arn:aws:ecs:us-east-1:954976299895:cluster/webdev77
   KUBE_NAMESPACE: default
 
 jobs:

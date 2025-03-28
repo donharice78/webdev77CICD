@@ -4,5 +4,5 @@ metadata:
   name: symfony-config
 data:
   APP_ENV: prod
-  DATABASE_URL: "mysql://user:password@mysql-service:3306/db_name"
+  DATABASE_URL: webdev77-cicd.cliageaoillm.us-east-1.rds.amazonaws.com
   # Add other non-sensitive configuration here
