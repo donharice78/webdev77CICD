@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 RUN docker-php-ext-install zip
 
 # Copy only composer files for efficient dependency installation
-COPY composer.json composer.lock symfony.lock ./ 
+COPY composer.json composer.lock symfony.lock ./
 
 # Initial install without scripts
 RUN composer install \
@@ -35,7 +35,6 @@ RUN set -e; \
         composer run-script post-install-cmd --no-interaction -vvv || \
         (echo "Warning: post-install-cmd failed but continuing build"; exit 0); \
     fi
-
 
 # Stage 2: Node.js build stage
 FROM node:18-alpine as node_builder
@@ -60,8 +59,7 @@ RUN set -e; \
     apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
-
-# Stage 3: Production stage (with fixed PHP extensions)
+# Stage 3: Production stage with fixed PHP extensions
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
@@ -79,54 +77,54 @@ RUN apk add --no-cache \
     libxml2 \
     oniguruma
 
-# Install PHP extensions with robust error handling
-RUN set -ex; \
-    # Install build dependencies
-    apk add --no-cache --virtual .build-deps \
-        autoconf \
-        g++ \
-        libtool \
-        make \
-        pcre-dev; \
-    apk add --no-cache \
-        libzip-dev \
-        libpng-dev \
-        libjpeg-turbo-dev \
-        freetype-dev \
-        libxml2-dev \
-        oniguruma-dev; \
-    
-    # Configure GD extension
-    docker-php-ext-configure gd --with-freetype --with-jpeg; \
-    
-    # Install PHP extensions
-    docker-php-ext-install -j$(nproc) \
-        gd \
-        pdo_mysql \
-        zip \
-        mbstring \
-        xml \
-        intl \
-        opcache; \
-    
-    # Install Redis extension via PECL
-    pecl install redis && docker-php-ext-enable redis; \
-    
-    # Clean up build dependencies
-    apk del .build-deps; \
-    rm -rf /tmp/* /var/cache/apk/*
+# Install build dependencies
+RUN apk add --no-cache --virtual .build-deps \
+    autoconf \
+    g++ \
+    libtool \
+    make \
+    pcre-dev \
+    linux-headers
 
+# Install PHP extension dependencies
+RUN apk add --no-cache \
+    libzip-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libxml2-dev \
+    oniguruma-dev
+
+# Install PHP extensions one by one with error handling
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install gd
+
+RUN docker-php-ext-install pdo_mysql && \
+    docker-php-ext-install zip && \
+    docker-php-ext-install mbstring && \
+    docker-php-ext-install xml && \
+    docker-php-ext-install intl && \
+    docker-php-ext-install opcache
+
+# Install Redis extension
+RUN pecl install -o -f redis && \
+    docker-php-ext-enable redis
+
+# Cleanup build dependencies
+RUN apk del .build-deps && \
+    rm -rf /tmp/* /var/cache/apk/* /usr/src/php/ext/*
 
 # Configure PHP
 RUN mkdir -p /usr/local/etc/php/conf.d && \
     mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
 
-# Use a conditional RUN statement to handle the missing file.
+# Handle PHP-FPM config
 RUN if [ -f docker/php/php-fpm.d/zz-docker.conf ]; then \
-        cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
+    cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
     else \
-        echo "Using default PHP-FPM configuration"; \
+    echo "Using default PHP-FPM configuration"; \
+    touch /usr/local/etc/php-fpm.d/zz-docker.conf; \
     fi
 
 # Copy built application
