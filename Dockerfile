@@ -59,7 +59,7 @@ RUN set -e; \
     apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
-# Stage 3: Production stage (with fixed PHP extensions)
+# Stage 3: Production stage
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
@@ -104,8 +104,14 @@ RUN set -e; \
 RUN mkdir -p /usr/local/etc/php/conf.d && \
     mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
-COPY docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/ || \
-    echo "Using default PHP-FPM configuration"
+
+# Fixed PHP-FPM config handling
+RUN if [ -f docker/php/php-fpm.d/zz-docker.conf ]; then \
+    cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/; \
+    else \
+    echo "Using default PHP-FPM configuration"; \
+    touch /usr/local/etc/php-fpm.d/zz-docker.conf; \
+    fi
 
 # Copy built application
 COPY --from=builder /app .
