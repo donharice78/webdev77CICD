@@ -59,12 +59,12 @@ RUN set -e; \
     apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
-# Stage 3: Production stage with fixed PHP extensions
+# Stage 3: Production stage with guaranteed PHP extension installation
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
 
-# Install runtime dependencies
+# Install runtime dependencies first
 RUN apk add --no-cache \
     acl \
     fcgi \
@@ -77,41 +77,45 @@ RUN apk add --no-cache \
     libxml2 \
     oniguruma
 
-# Install build dependencies
-RUN apk add --no-cache --virtual .build-deps \
-    autoconf \
-    g++ \
-    libtool \
-    make \
-    pcre-dev \
-    linux-headers
-
-# Install PHP extension dependencies
-RUN apk add --no-cache \
+# Install each PHP extension separately with its exact dependencies
+RUN apk add --no-cache --virtual .php-ext-deps \
     libzip-dev \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
     libxml2-dev \
-    oniguruma-dev
+    oniguruma-dev \
+    icu-dev \
+    zlib-dev \
+    pcre-dev
 
-# Install PHP extensions one by one with error handling
+# Install MySQL support
+RUN apk add --no-cache mariadb-dev && \
+    docker-php-ext-install pdo_mysql && \
+    apk del mariadb-dev
+
+# Install other extensions one by one
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install mbstring
+RUN docker-php-ext-install xml
+RUN docker-php-ext-install intl
+RUN docker-php-ext-install opcache
+
+# Configure and install GD separately
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     docker-php-ext-install gd
 
-RUN docker-php-ext-install pdo_mysql && \
-    docker-php-ext-install zip && \
-    docker-php-ext-install mbstring && \
-    docker-php-ext-install xml && \
-    docker-php-ext-install intl && \
-    docker-php-ext-install opcache
-
 # Install Redis extension
-RUN pecl install -o -f redis && \
-    docker-php-ext-enable redis
+RUN apk add --no-cache --virtual .redis-deps \
+    autoconf \
+    g++ \
+    make && \
+    pecl install -o -f redis && \
+    docker-php-ext-enable redis && \
+    apk del .redis-deps
 
-# Cleanup build dependencies
-RUN apk del .build-deps && \
+# Cleanup all build dependencies
+RUN apk del .php-ext-deps && \
     rm -rf /tmp/* /var/cache/apk/* /usr/src/php/ext/*
 
 # Configure PHP
