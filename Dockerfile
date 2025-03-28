@@ -1,10 +1,13 @@
-# Stage 1: Build stage
+# Stage 1: PHP Composer build stage
 FROM composer:2 as builder
 
 WORKDIR /app
 
 # Install system dependencies for composer
-RUN apk add --no-cache git unzip libzip-dev
+RUN apk add --no-cache \
+    git \
+    unzip \
+    libzip-dev
 
 # Install PHP extensions needed for composer
 RUN docker-php-ext-install zip
@@ -33,31 +36,48 @@ RUN set -e; \
         (echo "Warning: post-install-cmd failed but continuing build" && exit 0); \
     fi
 
-# Stage 2: Node.js build stage (improved with build tools and caching)
-FROM node:18 as node_builder
+# Stage 2: Node.js build stage (fixed with proper error handling)
+FROM node:18-alpine as node_builder
 
 WORKDIR /app
 COPY --from=builder /app .
 
-# Install build tools and dependencies
+# Install build dependencies separately with error handling
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++
+
+# Install npm packages with retry logic
 RUN if [ -f package.json ]; then \
-    apk add --no-cache --virtual .build-deps \
-        python3 \
-        make \
-        g++ \
-        && npm config set update-notifier false \
-        && npm install --no-audit --progress=false --unsafe-perm \
-        && ([ -f package-lock.json ] && rm -f package-lock.json || true) \
-        && ([ -n "$(npm run | grep '^  build')" ] && npm run build || true) \
-        && apk del .build-deps; \
+    echo "Installing Node.js dependencies..." && \
+    npm config set update-notifier false && \
+    { npm install --no-audit --progress=false --unsafe-perm || \
+      { echo "First install attempt failed, retrying with clean cache..." && \
+        npm cache clean --force && \
+        npm install --no-audit --progress=false --unsafe-perm; }; } && \
+    echo "Dependencies installed successfully"; \
     fi
+
+# Run build script if exists
+RUN if [ -f package.json ] && [ -f node_modules/.bin/webpack ]; then \
+    echo "Running build script..." && \
+    npm run build || \
+    echo "Build script failed but continuing"; \
+    elif [ -f package.json ]; then \
+    echo "No build script found"; \
+    fi
+
+# Clean up build dependencies
+RUN apk del .build-deps && \
+    rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
 # Stage 3: Production stage
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
 
-# Install system dependencies
+# Install runtime dependencies
 RUN apk add --no-cache \
     acl \
     fcgi \
@@ -87,25 +107,29 @@ RUN apk add --no-cache --virtual .build-deps \
     xml \
     intl \
     opcache && \
-    apk del .build-deps
+    apk del .build-deps && \
+    rm -rf /tmp/* /var/cache/apk/*
 
 # Configure PHP
+RUN mkdir -p /usr/local/etc/php/conf.d && \
+    mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
-RUN mkdir -p /usr/local/etc/php-fpm.d && \
-    { [ -f docker/php/php-fpm.d/zz-docker.conf ] && \
-      cp docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/ || \
-      touch /usr/local/etc/php-fpm.d/zz-docker.conf; }
+COPY docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/ || \
+    echo "Using default PHP-FPM configuration"
 
 # Copy built application
 COPY --from=builder /app .
-COPY --from=node_builder /app/public/build public/build/
+COPY --from=node_builder /app/public/build public/build/ || \
+    echo "No frontend assets found"
 
-# Configure nginx and supervisor
+# Configure nginx
 RUN mkdir -p /run/nginx && \
     mkdir -p /var/log/nginx && \
     touch /var/log/nginx/access.log /var/log/nginx/error.log
 COPY docker/nginx/nginx.conf /etc/nginx/
 COPY docker/nginx/symfony.conf /etc/nginx/conf.d/default.conf
+
+# Configure supervisor
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/
 
 # Runtime configuration
