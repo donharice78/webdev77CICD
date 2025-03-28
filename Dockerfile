@@ -42,29 +42,24 @@ FROM node:18-alpine as node_builder
 WORKDIR /app
 COPY --from=builder /app .
 
-# Install build dependencies
-RUN apk add --no-cache --virtual .build-deps \
-    python3 \
-    make \
-    g++
-
-# Install npm packages
-RUN if [ -f package.json ]; then \
-    npm config set update-notifier false && \
-    npm install --no-audit --progress=false --unsafe-perm || \
-    (npm cache clean --force && npm install --no-audit --progress=false --unsafe-perm); \
-    fi
-
-# Run build script if exists
-RUN if [ -f package.json ] && grep -q '"build"' package.json; then \
-    npm run build || echo "Build script failed but continuing"; \
-    fi
-
-# Clean up
-RUN apk del .build-deps && \
+# Install build tools with error handling
+RUN set -e; \
+    apk add --no-cache --virtual .build-deps \
+        python3 \
+        make \
+        g++; \
+    if [ -f package.json ]; then \
+        npm config set update-notifier false; \
+        npm install --no-audit --progress=false --unsafe-perm || \
+        (npm cache clean --force && npm install --no-audit --progress=false --unsafe-perm); \
+        if grep -q '"build"' package.json; then \
+            npm run build || echo "Build script failed but continuing"; \
+        fi; \
+    fi; \
+    apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/* ~/.npm
 
-# Stage 3: Production stage
+# Stage 3: Production stage (with fixed PHP extensions)
 FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
@@ -82,31 +77,35 @@ RUN apk add --no-cache \
     libxml2 \
     oniguruma
 
-# Install PHP extensions
-RUN apk add --no-cache --virtual .build-deps \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    libxml2-dev \
-    oniguruma-dev && \
-    docker-php-ext-configure gd --with-freetype --with-jpeg && \
+# Install PHP extensions with robust error handling
+RUN set -e; \
+    apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
+        libzip-dev \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
+        libxml2-dev \
+        oniguruma-dev; \
+    docker-php-ext-configure gd --with-freetype --with-jpeg; \
     docker-php-ext-install -j$(nproc) \
-    gd \
-    pdo_mysql \
-    zip \
-    mbstring \
-    xml \
-    intl \
-    opcache && \
-    apk del .build-deps && \
+        gd \
+        pdo_mysql \
+        zip \
+        mbstring \
+        xml \
+        intl \
+        opcache; \
+    docker-php-source delete; \
+    apk del .build-deps; \
     rm -rf /tmp/* /var/cache/apk/*
 
 # Configure PHP
 RUN mkdir -p /usr/local/etc/php/conf.d && \
     mkdir -p /usr/local/etc/php-fpm.d
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/
-COPY docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/
+COPY docker/php/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/ || \
+    echo "Using default PHP-FPM configuration"
 
 # Copy built application
 COPY --from=builder /app .
@@ -116,7 +115,8 @@ RUN if [ -d /app/public/build ]; then \
 
 # Configure nginx
 RUN mkdir -p /run/nginx && \
-    mkdir -p /var/log/nginx
+    mkdir -p /var/log/nginx && \
+    touch /var/log/nginx/access.log /var/log/nginx/error.log
 COPY docker/nginx/nginx.conf /etc/nginx/
 COPY docker/nginx/symfony.conf /etc/nginx/conf.d/default.conf
 
