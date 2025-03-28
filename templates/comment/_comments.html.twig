@@ -1,0 +1,45 @@
+{# templates/home/index.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block body %}
+	<!-- Other sections -->
+
+	<!-- Section des témoignages -->
+<section class="testimonials">
+    <h1 style="text-align: center;">Ce que disent nos étudiants</h1>
+    <h5 style="text-align: center;">Voir ce que nos étudiants disent de nous.</h5>
+
+    <div id="testimonialCarousel" class="carousel slide" data-ride="carousel" data-interval="5000">
+        <div class="carousel-inner">
+            {% if comments is empty %}
+                <p style="text-align: center;">Aucun avis disponible.</p>
+            {% else %}
+                {% for comment in comments %}
+                    <div class="carousel-item {% if loop.first %}active{% endif %}">
+                        <div class="testimonial-col" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                            <div>
+                                <h3>{{ comment.user ? comment.user.firstName ~ ' ' ~ comment.user.lastName : 'Anonymous' }}</h3>
+                                {% for i in 1..5 %}
+                                    <i class="fa fa-star {% if i <= comment.rating %}checked{% endif %}"></i>
+                                {% endfor %}
+                                <p>{{ comment.content }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Controls -->
+        <button class="carousel-control-prev" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" style="border-radius: 50%;"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" style="border-radius: 50%;"></span>
+        </button>
+    </div>
+</section>
+
+
+{% endblock %}

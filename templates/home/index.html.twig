@@ -1,0 +1,263 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+	WeB DeV
+{% endblock %}
+
+{% block stylesheets %}
+
+	<!-- Importation des fichiers CSS supplémentaires pour le style général et des cours -->
+	<link rel="stylesheet" href="{{ asset ('../assets/styles/styles.css') }}">
+	<link rel="stylesheet" href="{{ asset ('../assets/styles/courses.css') }}">
+	<style>
+		/* Style pour enlever la décoration des liens */
+		.no-underline {
+			text-decoration: none;
+		}
+
+		.dev-danger {
+			color: rgba(255, 49, 49, 255)
+		}
+		
+	</style>
+{% endblock %}
+
+{% block body %}
+	<body>
+		<!-- Section d'en-tête -->
+		<section class="header">
+			<nav>
+				<!-- Logo cliquable qui redirige vers la page d'accueil -->
+				<a href="{{ path('app_home') }}">
+					<img src="{{ asset('../assets/img/Web Dev-logo.png') }}" alt="Logo">
+				</a>
+				<div
+					class="nav-links" id="navLinks">
+					<!-- Icône pour fermer le menu -->
+					<i class="bi bi-x" onclick="hideMenu()"></i>
+					<ul>
+						<!-- Liens de navigation -->
+						<li>
+							<a href="{{ path('app_home') }}">ACCUEIL</a>
+						</li>
+						<li>
+							<a href="{{ path('app_apropos') }}">À PROPOS</a>
+						</li>
+						<li>
+							<a href="{{ path('app_course_index') }}">COURS</a>
+						</li>
+						<li>
+							<a href="{{ path('app_blogs_index') }}">BLOG</a>
+						</li>
+						<li>
+							<a href="{{ path('app_contact') }}">CONTACT</a>
+						</li>
+						<li>
+							<!-- Liens de connexion/déconnexion -->
+							<div aria-labelledby="">
+								{% if app.user %}
+									{% if 'ROLE_ADMIN' in app.user.roles %}
+										<a href="{{ path('app_admin_dashboard') }}">ESPACE ADMIN
+										</a>
+									{% elseif 'ROLE_USER' in app.user.roles %}
+										<a href="{{ path('app_admin_user_show', { 'username': app.user.username }) }}">ESPACE ETUDIANT</a>
+									{% endif %}
+								{% else %}
+									<a href="{{ path('app_login') }}">CONNEXION</a>
+								{% endif %}
+							</div>
+
+						</li>
+					</ul>
+				</div>
+				<!-- Icône pour ouvrir le menu -->
+				<i class="bi bi-list" onclick="showMenu()"></i>
+			</nav>
+
+			<!-- Texte d'accueil -->
+			<div class="text-box mt-5">
+				<h1>Bienvenue à
+					<span class="dev-danger">WeB DeV</span>
+				</h1>
+				<p>
+					<strong>
+						Ici, nous vous emmenons d'une faible connaissance du développement Web
+						<br>
+						à un développeur Web professionnel
+					</strong>
+				</p>
+				<a href="{{ path('app_course_index') }}" class="hero-btn">Regardez ce que nous proposons</a>
+			</div>
+		</section>
+
+		<!-- Section des cours -->
+		<section class="course">
+			<h2>Les diplômes que nous proposons</h2>
+			<p>Le titre RNCP (Répertoire National des Certifications Professionnelles) pour les développeurs web.</p>
+			<div
+				class="roow">
+				<!-- Chaque diplôme avec un lien vers les certifications -->
+				<div class="course-col">
+					<a href="{{path('app_certification') }}" class="fw-bold dev-danger mx-1 no-underline">
+						<h3>RNCP Niveau 5</h3>
+					</a>
+					<p>
+						<strong class="fw-bold">Développeur Web et Web Mobile (BTS, DUT)</strong>
+						<br>
+						Le niveau 5 correspond à des formations équivalentes au BTS ou au DUT. 
+												                        Les diplômés à ce niveau possèdent des compétences techniques de base nécessaires pour exercer le métier de développeur web et web mobile.
+					</p>
+					<a href="{{ path('app_course_index') }}" class="hero-btn text-black">Regardez ce que nous proposons</a>
+				</div>
+				<div class="course-col">
+					<a href="{{path('app_certification') }}" class="fw-bold dev-danger mx-1 no-underline">
+						<h3>RNCP Niveau 6</h3>
+					</a>
+					<p>
+						<strong class="fw-bold">Développeur Web et Web Mobile (Licence, Bachelor)</strong>
+						<br>Le niveau 6 correspond à des formations équivalentes à une Licence ou un Bachelor. 
+												                        Les diplômés à ce niveau ont des compétences plus approfondies et une meilleure compréhension des technologies web avancées.
+					</p>
+					<a href="{{ path('app_course_index') }}" class="hero-btn text-black">Regardez ce que nous proposons</a>
+				</div>
+				<div class="course-col">
+					<a href="{{path('app_certification') }}" class="fw-bold dev-danger mx-1 no-underline">
+						<h3>RNCP Niveau 7</h3>
+					</a>
+					<p>
+						<strong class="fw-bold">Développeur Web et Web Mobile (Master, MBA)</strong>
+						<br>Le niveau 7 correspond à des formations équivalentes à un Master ou un MBA. 
+												                        Les diplômés à ce niveau possèdent des compétences avancées et une expertise approfondie dans le développement web et mobile.
+					</p>
+					<a href="{{ path('app_course_index') }}" class="hero-btn text-black">Regardez ce que nous proposons</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section du campus -->
+		<section class="campus" id="campus">
+			<h1>Notre Campus</h1>
+			<p>Pour l'instant, nous avons trois campus en France</p>
+			<div
+				class="roow">
+				<!-- Campus avec images et noms -->
+				<div class="campus-col">
+					<img src="{{ asset('../assets/img/Tour_eff.jpg') }}" alt="Paris">
+					<div class="layer">
+						<h3>PARIS</h3>
+					</div>
+				</div>
+				<div class="campus-col">
+					<img src="{{ asset('../assets/img/lyon_eff.jpg') }}" alt="Lyon">
+					<div class="layer">
+						<h3>LYON</h3>
+					</div>
+				</div>
+				<div class="campus-col">
+					<img src="{{ asset('../assets/img/lille_eff.jpg') }}" alt="Lille">
+					<div class="layer">
+						<h3>LILLE</h3>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section des installations -->
+		<section class="facilities" id="facilities">
+			<h1>Nos installations</h1>
+			<p>En tant que développeur Web, vous n'avez pas besoin de rester assis devant votre ordinateur.
+				<br>
+				Découvrez certaines de nos installations pour vous libérer du stress
+			</p>
+			<div
+				class="roow">
+				<!-- Installations avec images et descriptions -->
+				<div class="facilities-col">
+					<img src="{{ asset('../assets/img/Bibliothèque de classe.jpg') }}" alt="Library">
+					<h3 class="text-center">Bibliothèque de classe</h3>
+					<p class="text-center">Possède une vaste collection de livres, manuscrits, archives, périodiques, 
+												                        et autres documents couvrant une large gamme de sujets.</p>
+				</div>
+				<div class="facilities-col">
+					<img src="{{ asset('../assets/img/basketball2.jpg') }}" alt="Basketball">
+					<h3 class="text-center">Grande aire de jeux</h3>
+					<p class="text-center">Les pauses récréatives peuvent aider à recharger les batteries, ce qui conduit à une 
+												                        meilleure concentration et une plus grande productivité</p>
+				</div>
+				<div class="facilities-col">
+					<img src="{{ asset('../assets/img/office food canteen.jpg') }}" alt="Cafeteria">
+					<h3 class="text-center">Nourriture savoureuse</h3>
+					<p class="text-center">Proposez une sélection variée de plats pour répondre aux différents goûts et besoins alimentaires, 
+												                        y compris des options végétariennes, véganes.</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section des témoignages -->
+		<section class="comments-section">
+			{{ render(controller('App\\Controller\\CommentController::commentsPartial')) }}
+		</section>
+
+		<!-- Footer -->
+		<footer class="footer">
+			<div class="footer-container">
+				<div
+					class="footer-row">
+					<!-- Colonnes du pied de page avec informations et liens -->
+					<div class="footer-col">
+						<h4>WeB DeV</h4>
+						<ul>
+							<li><a href="{{ path('app_home') }}">Accueil</a></li>
+							<li><a href="{{ path('app_blogs_index') }}">Notre Blog</a></li>
+							<li><a href="{{ path('app_contact') }}">Contactez-nous</a></li>
+							<li><a href="{{ path('app_apropos') }}">À propos de nous</a></li>
+							<li><a href="{{ path('app_privacy') }}">Politique de confidentialité</a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Obtenir de l'aide</h4>
+						<ul>
+							<li><a href="{{ path('app_faq') }}">FAQ</a></li>
+							<li><a href="{{ path('app_certification') }}">Certification</a></li>
+							<li><a href="{{ path('app_financements') }}">Financements</a></li>
+							<li><a href="{{ path('app_evenements') }}">Événements</a></li>
+							<li><a href="{{ path('app_modaliteacces') }}">Modalités d'accès</a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Adresse</h4>
+						<ul>
+							<li><a href="">7 Avenue du General Patton</a></li>
+							<li><a href="">77000</a></li>
+							<li><a href="">Melun</a></li>
+							<li><a href="tel:+33783650880">Tel: 07 83 65 08 80</a></li>
+							<li><a href="{{ path('app_contact') }}">Contactez-nous <i class="fa-regular fa-envelope"></i></a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Suivez-nous</h4>
+						<div class="social-links">
+							<a href="https://www.facebook.com/yourpage" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-facebook-f"></i>
+							</a>
+							<a href="https://twitter.com/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-twitter"></i>
+							</a>
+							<a href="https://www.instagram.com/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-instagram"></i>
+							</a>
+							<a href="https://www.linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-linkedin-in"></i>
+							</a>
+						</div>
+
+					</div>
+
+
+				</div>
+			</div>
+		</footer>
+	</body>
+{% endblock %}
+
+{% block javascripts %}{% endblock %}

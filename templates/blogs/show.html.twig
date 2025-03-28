@@ -1,0 +1,198 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Détails du Blog
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link rel="stylesheet" href="{{ asset('../assets/styles/styles.css') }}">
+	<link rel="stylesheet" href="{{ asset('../assets/styles/courses.css') }}">
+{% endblock %}
+
+{% block body %}
+	<body>
+
+		<!-- Section d'en-tête -->
+		<section class="courses-header">
+			<nav>
+				<a href="{{ path('app_home') }}">
+				<img src="{{ asset('../assets/img/Web Dev-logo.png') }}" alt="Logo">
+
+				</a>
+				<div class="nav-links" id="navLinks">
+					<i class="bi bi-x" onclick="hideMenu()"></i>
+					<ul>
+						<li>
+							<a href="{{ path('app_home') }}">ACCUEIL</a>
+						</li>
+						<li>
+							<a href="{{ path('app_apropos') }}">À PROPOS</a>
+						</li>
+						<li>
+							<a href="{{ path('app_course_index') }}">COURS</a>
+						</li>
+						<li>
+							<a href="{{ path('app_blogs_index') }}">BLOG</a>
+						</li>
+						<li>
+							<a href="{{ path('app_contact') }}">CONTACT</a>
+						</li>
+						<li>
+							<div aria-labelledby="">
+								{% if app.user %}
+									{% if 'ROLE_ADMIN' in app.user.roles %}
+										<a href="{{ path('app_admin_dashboard') }}">ESPACE ADMIN
+										</a>
+									{% elseif 'ROLE_USER' in app.user.roles %}
+										<a href="{{ path('app_admin_user_show', { 'username': app.user.username }) }}">ESPACE ETUDIANT</a>
+									{% endif %}
+								{% else %}
+									<a href="{{ path('app_login') }}">CONNEXION</a>
+								{% endif %}
+							</div>
+						</li>
+					</ul>
+				</div>
+				<i class="bi bi-list" onclick="showMenu()"></i>
+			</nav>
+		</section>
+
+		<!-- Contenu principal -->
+		<div
+			class="container mt-4">
+			<!-- Titre du blog et date -->
+			<div class="text-center mb-4">
+				<h1>{{ blog.title }}</h1>
+				<p class="text-muted">{{ blog.createdAt|date('Y-m-d H:i') }}</p>
+			</div>
+
+			<!-- Contenu du blog -->
+			<div class="mb-4">
+				<p>{{ blog.content }}</p>
+			</div>
+
+			<!-- Galerie d'images avec carrousel -->
+			<div class="container mt-4">
+				<h3 class="text-center mb-4">Galerie d'Images</h3>
+				{% if blog.images|length > 0 %}
+					<!-- Miniatures -->
+					<div class="row">
+						{% for image in blog.images %}
+							<div class="col-md-4 mb-2">
+								<a href="#" data-bs-toggle="modal" data-bs-target="#carouselModal" data-bs-slide-to="{{ loop.index0 }}">
+									<img src="{{ asset('uploads/' ~ image.name) }}" class="img-thumbnail" alt="Image du Blog">
+								</a>
+							</div>
+						{% endfor %}
+					</div>
+
+					<!-- Modal Carrousel -->
+					<div class="modal fade" id="carouselModal" tabindex="-1" aria-labelledby="carouselModalLabel" aria-hidden="true">
+						<div class="modal-dialog modal-dialog-centered modal-lg">
+							<div class="modal-content">
+								<div class="modal-header">
+									<h5 class="modal-title" id="carouselModalLabel">Galerie d'Images</h5>
+									<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+								</div>
+								<div class="modal-body">
+									<div id="carouselIndicators" class="carousel slide">
+										<div class="carousel-inner">
+											{% for image in blog.images %}
+												<div class="carousel-item {% if loop.first %}active{% endif %}">
+													<img src="{{ asset('uploads/' ~ image.name) }}" class="d-block w-100" alt="Image du Blog">
+												</div>
+											{% endfor %}
+										</div>
+										<button class="carousel-control-prev" type="button" data-bs-target="#carouselIndicators" data-bs-slide="prev">
+											<span class="carousel-control-prev-icon" aria-hidden="true"></span>
+											<span class="visually-hidden">Précédent</span>
+										</button>
+										<button class="carousel-control-next" type="button" data-bs-target="#carouselIndicators" data-bs-slide="next">
+											<span class="carousel-control-next-icon" aria-hidden="true"></span>
+											<span class="visually-hidden">Suivant</span>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				{% else %}
+					<div class="alert alert-info" role="alert">
+						Aucune image disponible.
+					</div>
+				{% endif %}
+			</div>
+
+			<!-- Boutons pour retourner à la liste ou modifier/créer un blog -->
+			<div class="text-center mt-4">
+				<a href="{{ path('app_blogs_index') }}" class="btn btn-secondary mb-3">Retour à la liste</a>
+
+				{% if is_granted('ROLE_ADMIN') %}
+					<a href="{{ path('app_blogs_edit', {'id': blog.id}) }}" class="btn btn-warning mb-3">Modifier</a>
+					<a href="{{ path('app_blogs_new') }}" class="btn btn-success mb-3">Créer un Nouveau Blog</a>
+					{{ include('blogs/_delete_form.html.twig') }}
+				{% endif %}
+			</div>
+		</div>
+
+		<!-- Footer -->
+		<footer class="footer">
+			<div class="footer-container">
+				<div
+					class="footer-row">
+					<!-- Colonnes du pied de page avec informations et liens -->
+					<div class="footer-col">
+						<h4>WeB DeV</h4>
+						<ul>
+							<li><a href="{{ path('app_home') }}">Accueil</a></li>
+							<li><a href="{{ path('app_blogs_index') }}">Notre Blog</a></li>
+							<li><a href="{{ path('app_contact') }}">Contactez-nous</a></li>
+							<li><a href="{{ path('app_apropos') }}">À propos de nous</a></li>
+							<li><a href="{{ path('app_privacy') }}">Politique de confidentialité</a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Obtenir de l'aide</h4>
+						<ul>
+							<li><a href="{{ path('app_faq') }}">FAQ</a></li>
+							<li><a href="{{ path('app_certification') }}">Certification</a></li>
+							<li><a href="{{ path('app_financements') }}">Financements</a></li>
+							<li><a href="{{ path('app_evenements') }}">Événements</a></li>
+							<li><a href="{{ path('app_modaliteacces') }}">Modalités d'accès</a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Adresse</h4>
+						<ul>
+							<li><a href="">7 Avenue du General Patton</a></li>
+							<li><a href="">77000</a></li>
+							<li><a href="">Melun</a></li>
+							<li><a href="tel:+33783650880">Tel: 07 83 65 08 80</a></li>
+							<li><a href="{{ path('app_contact') }}">Contactez-nous <i class="fa-regular fa-envelope"></i></a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Suivez-nous</h4>
+						<div class="social-links">
+							<a href="https://www.facebook.com/yourpage" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-facebook-f"></i>
+							</a>
+							<a href="https://twitter.com/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-twitter"></i>
+							</a>
+							<a href="https://www.instagram.com/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-instagram"></i>
+							</a>
+							<a href="https://www.linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-linkedin-in"></i>
+							</a>
+						</div>
+
+					</div>
+
+
+				</div>
+			</div>
+		</footer>
+     </body>
+{% endblock %}

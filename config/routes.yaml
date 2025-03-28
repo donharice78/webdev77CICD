@@ -1,0 +1,18 @@
+controllers:
+    resource: ../src/Controller/
+    type: attribute
+
+admin_dashboard:
+    path: /admin/dashboard
+    defaults: { _controller: App\Controller\AdminController::dashboard }
+    methods: [GET]
+
+student_dashboard:
+    path: /admin/dashboard
+    defaults: { _controller: App\Controller\StudentController::dashboard }
+    methods: [GET]
+
+user_show:
+    path: /user/
+    controller: App\Controller\UserController::show
+    methods: GET

@@ -1,0 +1,40 @@
+# config/packages/security.yaml
+security:
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    providers:
+        app_user_provider:
+            id: App\Security\UserProvider
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        main:
+            lazy: true
+            provider: app_user_provider
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+                success_handler: App\Security\LoginSuccessHandler # Add your success handler here
+            logout:
+                path: app_logout
+                # Redirect after logout
+                target: app_home # Redirect to homepage or any other page after logout
+
+            # Uncomment and configure the necessary authentications if needed
+            # switch_user: true
+
+    access_control:
+        # Define access control rules
+        - { path: ^/back, roles: ROLE_ADMIN }
+        - { path: ^/view, roles: ROLE_USER}
+        - { path: ^/user, roles: ROLE_USER }
+        - { path: ^/comment, roles: ROLE_ADMIN }
+        - { path: ^/course/new, roles: ROLE_ADMIN }
+        - { path: ^/course/edit, roles: ROLE_ADMIN }
+        - { path: ^/blogs/new, roles: ROLE_ADMIN }
+        - { path: ^/blogs/edit, roles: ROLE_ADMIN }
+

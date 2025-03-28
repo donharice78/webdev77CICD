@@ -1,0 +1,194 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}A Propos
+{% endblock %}
+
+{% block stylesheets %}
+
+	<link rel="stylesheet" href="{{ asset ('../assets/styles/styles.css') }}">
+	<link rel="stylesheet" href="{{ asset ('../assets/styles/aboutUs.css') }}">
+
+
+{% endblock %}
+
+{% block body %}
+
+	<body>
+		<section class="aboutUs-header">
+			<nav>
+				<a href="{{ path('app_home') }}">
+					<img src="{{ asset('../assets/img/Web Dev-logo.png') }}" alt="Logo">
+				</a>
+				<div class="nav-links" id="navLinks">
+					<i class="bi bi-x" onclick="hideMenu()"></i>
+					<ul>
+						<li>
+							<a href="{{ path('app_home') }} ">ACCUEIL </a>
+						</li>
+						<li>
+							<a href="{{ path('app_apropos') }}">À PROPOS</a>
+						</li>
+						<li>
+							<a href="{{ path('app_course_index') }}">COURS</a>
+						</li>
+						<li>
+							<a href="{{ path('app_blogs_index') }}">BLOG</a>
+						</li>
+						<li>
+							<a href="{{ path('app_contact') }}">CONTACT</a>
+						</li>
+
+						<li class="">
+
+							<div aria-labelledby="">
+								{% if app.user %}
+									{% if 'ROLE_ADMIN' in app.user.roles %}
+										<a href="{{ path('app_admin_dashboard') }}">ESPACE ADMIN
+										</a>
+									{% elseif 'ROLE_USER' in app.user.roles %}
+										<a href="{{ path('app_admin_user_show', { 'username': app.user.username }) }}">ESPACE ETUDIANT</a>
+									{% endif %}
+								{% else %}
+									<a href="{{ path('app_login') }}">CONNEXION</a>
+								{% endif %}
+							</div>
+						</li>
+					</ul>
+				</div>
+				<i class="bi bi-list" onclick="showMenu()"></i>
+			</nav>
+
+
+		</section>
+		<!-- ------------------------------------about us------------------------------------ -->
+
+		<!-- About Us Section -->
+		<section class="container my-5">
+			<h1 class="text-center mb-4">À Propos de Nous</h1>
+
+			<div class="row">
+				<div class="col-md-6 mb-4">
+					<div class="card">
+						<img src="{{ asset('../assets/img/workers1.jpg') }}" class="card-img-top" alt="Notre École">
+						<div class="card-body">
+							<h5 class="card-title d-flex justify-content-center">Notre Mission</h5>
+							<p class="card-text text-center">
+								Notre mission est de fournir une éducation holistique qui permet aux élèves de réussir sur le plan académique, social et personnel. Nous nous efforçons de créer un environnement bienveillant où chaque enfant peut réaliser pleinement son potentiel.
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-6 mb-4">
+					<div class="card">
+						<img src="{{ asset('../assets/img/vision.jpg') }}" class="card-img-top" alt="Notre Vision">
+						<div class="card-body">
+							<h5 class="card-title  d-flex justify-content-center">Notre Vision</h5>
+							<p class="card-text text-center">
+								Nous envisageons un avenir où chaque élève devient un apprenant à vie et un citoyen global responsable. Notre objectif est de préparer les élèves à réussir dans un monde en constante évolution grâce à des méthodes d'enseignement innovantes et un engagement envers l'excellence.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-4 mb-4">
+					<div class="card">
+						<img src="{{ asset('../assets/img/equipe2.jpg') }}" class="card-img-top " alt="Notre Équipe">
+						<div class="card-body">
+							<h5 class="card-title d-flex justify-content-center">Rencontrez Notre Équipe</h5>
+							<p class="card-text text-center">
+								Notre équipe dévouée d'enseignants et d'administrateurs s'engage à soutenir la croissance académique et personnelle de chaque élève. Découvrez les individus talentueux qui composent notre communauté scolaire.
+							</p>
+							<a href="{{ path('app_team') }}" class="btn btn-danger d-flex justify-content-center">En Savoir Plus</a>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4 mb-4">
+					<div class="card">
+						<img src="{{ asset('../assets/img/installations.jpg') }}" class="card-img-top" alt="Nos Installations">
+						<div class="card-body ">
+							<h5 class="card-title d-flex justify-content-center">Nos Installations</h5>
+							<p class="card-text text-center">
+								Découvrez les installations à la pointe de la technologie qui améliorent les expériences d'apprentissage de nos élèves. De salles de classe modernes à des technologies de pointe, nous offrons un environnement d'apprentissage.
+							</p>
+							<a href="{{ path('app_home') }}#facilities" class="btn btn-danger d-flex justify-content-center ">Explorer les Installations</a>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4 mb-4">
+					<div class="card">
+						<img src="{{ asset('../assets/img/histoire1.jpg') }}" class="card-img-top" alt="Notre Histoire">
+						<div class="card-body">
+							<h5 class="card-title d-flex justify-content-center">Notre Histoire</h5>
+							<p class="card-text d-flex text-center">
+								Découvrez l'histoire riche de notre école, de sa fondation à nos jours. Notre histoire reflète notre croissance et notre évolution en tant que pilier de l’excellence éducative dans la communauté et de la sécurité d’emploi
+							</p>
+							<a href="{{ path('app_historie') }}" class="btn btn-danger d-flex justify-content-center ">En Savoir Plus</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+
+		<!-- Footer -->
+		<footer class="footer">
+			<div class="footer-container">
+				<div class="footer-row">
+					<!-- Colonnes du pied de page avec informations et liens -->
+					<div class="footer-col">
+						<h4>WeB DeV</h4>
+						<ul>
+							<li><a href="{{ path('app_home') }}">Accueil</a></li>
+							<li><a href="{{ path('app_blogs_index') }}">Notre Blog</a></li>
+							<li><a href="{{ path('app_contact') }}">Contactez-nous</a></li>
+							<li><a href="{{ path('app_apropos') }}">À propos de nous</a></li>
+							<li><a href="{{ path('app_privacy') }}">Politique de confidentialité</a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Obtenir de l'aide</h4>
+						<ul>
+							<li><a href="{{ path('app_faq') }}">FAQ</a></li>
+							<li><a href="{{ path('app_certification') }}">Certification</a></li>
+							<li><a href="{{ path('app_financements') }}">Financements</a></li>
+							<li><a href="{{ path('app_evenements') }}">Événements</a></li>
+							<li><a href="{{ path('app_modaliteacces') }}">Modalités d'accès</a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Adresse</h4>
+						<ul>
+							<li><a href="">7 Avenue du General Patton</a></li>
+							<li><a href="">77000</a></li>
+							<li><a href="">Melun</a></li>
+							<li><a href="tel:+33783650880">Tel: 07 83 65 08 80</a></li>
+							<li><a href="{{ path('app_contact') }}">Contactez-nous <i class="fa-regular fa-envelope"></i></a></li>
+						</ul>
+					</div>
+					<div class="footer-col">
+						<h4>Suivez-nous</h4>
+						<div class="social-links">
+							<a href="https://www.facebook.com/yourpage" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-facebook-f"></i>
+							</a>
+							<a href="https://twitter.com/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-twitter"></i>
+							</a>
+							<a href="https://www.instagram.com/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-instagram"></i>
+							</a>
+							<a href="https://www.linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-linkedin-in"></i>
+							</a>
+						</div>
+
+					</div>
+
+
+				</div>
+			</div>
+		</footer>
+	</body>
+{% endblock %}

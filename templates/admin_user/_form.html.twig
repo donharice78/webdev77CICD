@@ -1,0 +1,89 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('../assets/styles/styles.css') }}">
+    <link rel="stylesheet" href="{{ asset('../assets/styles/courses.css') }}">
+{% endblock %}
+
+{% block body %}
+    <body>
+        <section class="courses-header">
+            <nav>
+                <!-- Logo cliquable qui redirige vers la page d'accueil -->
+                <a href="{{ path('app_home') }}">
+                    <img src="{{ asset('../assets/img/Web Dev-logo.png') }}" alt="Logo">
+                </a>
+                <div class="nav-links" id="navLinks">
+                    <!-- Icône pour fermer le menu -->
+                    <i class="bi bi-x" onclick="hideMenu()"></i>
+                    <ul>
+                        <!-- Liens de navigation -->
+                        <li><a href="{{ path('app_home') }}">ACCUEIL</a></li>
+                        <li><a href="{{ path('app_apropos') }}">À PROPOS</a></li>
+                        <li><a href="{{ path('app_course_index') }}">COURS</a></li>
+                        <li><a href="{{ path('app_blogs_index') }}">BLOG</a></li>
+                        <li><a href="{{ path('app_contact') }}">CONTACT</a></li>
+                        <li>
+                            <div aria-labelledby="">
+                                {% if app.user %}
+                                    {% if 'ROLE_ADMIN' in app.user.roles %}
+                                        <a href="{{ path('app_admin_dashboard') }}">ESPACE ADMIN</a>
+                                    {% elseif 'ROLE_USER' in app.user.roles %}
+                                        <a href="{{ path('app_admin_user_show', { 'username': app.user.username }) }}">ESPACE ETUDIANT</a>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{{ path('app_login') }}">CONNEXION</a>
+                                {% endif %}
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <!-- Icône pour ouvrir le menu -->
+                <i class="bi bi-list" onclick="showMenu()"></i>
+            </nav>
+        </section>
+        <div class="container mt-5">
+            <!-- Form Header -->
+            <h1 class="text-center mb-4">{{ app.request.attributes.get('_route') == 'app_admin_user_edit' ? 'Edit User' : 'Create New User' }}</h1>
+
+            <!-- Form Container -->
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    {{ form_start(form, {'attr': {'class': 'form'}}) }}
+
+                    <!-- Form Fields -->
+                    <div class="mb-4">
+                        {% for field in form %}
+                            {% if field.vars.name != '_token' and field.vars.name != 'password' %}
+                                <!-- Exclude token and password fields -->
+                                <div class="mb-3">
+                                    {{ form_label(field, null, {'attr': {'class': 'form-label'}}) }}
+                                    {{ form_widget(field, {'attr': {'class': 'form-control form-control-lg'}}) }}
+                                    {{ form_errors(field) }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="text-center mt-4 mb-4">
+                        <button type="submit" class="btn btn-primary btn-lg">{{ button_label|default('Save') }}</button>
+                        <a href="{{ path('app_all_admin_user_index') }}" class="btn btn-secondary btn-lg">Retour à la liste</a>
+                    </div>
+
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-container">
+                <div class="footer-row">
+                    <!-- Footer content here -->
+                </div>
+            </div>
+        </footer>
+    </body>
+{% endblock %}
