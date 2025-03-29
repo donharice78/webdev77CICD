@@ -1,7 +1,9 @@
+# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: symfony-app
+  namespace: default
   labels:
     app: symfony
 spec:
@@ -16,14 +18,14 @@ spec:
     spec:
       containers:
       - name: symfony
-        image: webdev77/symfony-app:latest
+        image: 954976299895.dkr.ecr.us-east-1.amazonaws.com/webdev77:latest
         ports:
         - containerPort: 80
         envFrom:
-        - secretRef:
-            name: symfony-secrets
         - configMapRef:
             name: symfony-config
+        - secretRef:
+            name: symfony-secrets
         resources:
           requests:
             cpu: "100m"
