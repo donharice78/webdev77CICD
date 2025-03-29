@@ -3,54 +3,81 @@ FROM composer:2 as builder
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache \
-    git \
-    unzip \
-    libzip-dev \
-    icu-dev \
-    libxml2-dev \
-    postgresql-dev \
-    linux-headers
+# 1. Install system dependencies with version pinning
+RUN apk add --no-cache --update \
+    git=~2 \
+    unzip=~6 \
+    bash=~5 \
+    libzip-dev=~1 \
+    icu-dev=~72 \
+    libxml2-dev=~2 \
+    postgresql-dev=~15 \
+    linux-headers=~6 \
+    freetype-dev=~2 \
+    libjpeg-turbo-dev=~2 \
+    libpng-dev=~1 \
+    oniguruma-dev=~6
 
-# Install required PHP extensions
-RUN docker-php-ext-install \
+# 2. Install and configure PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-configure intl && \
+    docker-php-ext-install -j$(nproc) \
     zip \
     intl \
     xml \
-    pdo_mysql
+    pdo_mysql \
+    mbstring \
+    opcache \
+    gd
 
-# Configure environment
+# 3. Configure Composer environment
 ENV COMPOSER_MEMORY_LIMIT=-1 \
-    COMPOSER_NO_INTERACTION=1
+    COMPOSER_NO_INTERACTION=1 \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_HOME=/tmp/composer
 
-# Copy only composer files first for layer caching
+# 4. Copy only composer files first
 COPY composer.* symfony.lock ./
 
-# Install dependencies with retry logic
-RUN set -e; \
+# 5. Robust composer install with verification
+RUN set -ex; \
+    \
+    # First attempt with verbose output
     composer install \
     --no-dev \
     --optimize-autoloader \
+    --no-progress \
+    --prefer-dist \
     --ignore-platform-reqs \
-    --prefer-dist || \
-    (echo "First attempt failed. Retrying..." && \
+    --ansi || \
+    \
+    # Fallback if first attempt fails
+    (echo "First attempt failed. Cleaning cache and retrying..." && \
+    composer clear-cache && \
     rm -rf vendor/* && \
     composer install \
     --no-dev \
     --optimize-autoloader \
+    --no-progress \
+    --prefer-dist \
     --ignore-platform-reqs \
-    --prefer-dist)
+    --ansi); \
+    \
+    # Final verification
+    if [ ! -f "vendor/autoload.php" ]; then \
+        echo "ERROR: Composer installation failed completely"; \
+        exit 1; \
+    fi
 
-# Copy application files
+# 6. Copy application files
 COPY . .
 
-# Run post-install scripts
-RUN set -e; \
+# 7. Run post-install scripts
+RUN set -ex; \
     composer dump-autoload --optimize --classmap-authoritative; \
     if [ -f bin/console ]; then \
-        composer run-script post-install-cmd || \
-        (echo "Warning: post-install scripts failed but continuing build"; exit 0); \
+        php bin/console cache:clear --no-warmup || echo "Cache clear failed but continuing"; \
+        php bin/console assets:install public || echo "Assets install failed but continuing"; \
     fi
 
 # Stage 2: Node.js Builder (conditional)
@@ -65,6 +92,7 @@ RUN if [ -f package.json ]; then \
         python3 \
         make \
         g++; \
+    npm config set update-notifier false; \
     npm install --no-audit --progress=false; \
     if grep -q '"build"' package.json; then \
         npm run build || echo "Build script failed but continuing"; \
@@ -76,38 +104,25 @@ RUN if [ -f package.json ]; then \
 # Stage 3: Production Runtime
 FROM php:8.2-fpm-alpine
 
-# Install runtime dependencies
+# 1. Install runtime dependencies
 RUN apk add --no-cache \
-    acl \
-    fcgi \
-    nginx \
-    supervisor \
-    libzip \
-    libpng \
-    libjpeg-turbo \
-    freetype \
-    libxml2 \
-    oniguruma \
-    icu \
-    postgresql-libs
+    nginx=~1 \
+    supervisor=~4 \
+    libzip=~1 \
+    libpng=~1 \
+    libjpeg-turbo=~2 \
+    freetype=~2 \
+    libxml2=~2 \
+    oniguruma=~6 \
+    icu=~72 \
+    postgresql-libs=~15 \
+    acl=~2 \
+    fcgi=~2 \
+    shadow=~4
 
-# Install build dependencies and PHP extensions
-RUN apk add --no-cache --virtual .build-deps \
-    autoconf \
-    g++ \
-    libtool \
-    make \
-    pcre-dev \
-    linux-headers \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    libxml2-dev \
-    oniguruma-dev \
-    icu-dev \
-    postgresql-dev && \
-    docker-php-ext-install \
+# 2. Install and configure PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     pdo_pgsql \
     zip \
@@ -115,54 +130,50 @@ RUN apk add --no-cache --virtual .build-deps \
     xml \
     mbstring \
     opcache \
-    pcntl && \
-    docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd && \
-    pecl install redis && docker-php-ext-enable redis && \
-    apk del .build-deps && \
-    rm -rf /tmp/* /var/cache/apk/* /usr/src/php/ext/*
+    pcntl \
+    gd && \
+    pecl install redis && docker-php-ext-enable redis
 
-# Configure PHP
-RUN mkdir -p /usr/local/etc/php/conf.d && \
-    { \
-        echo 'opcache.enable=1'; \
-        echo 'opcache.memory_consumption=128'; \
-        echo 'opcache.interned_strings_buffer=8'; \
-        echo 'opcache.max_accelerated_files=4000'; \
-        echo 'opcache.revalidate_freq=2'; \
-        echo 'opcache.fast_shutdown=1'; \
-    } > /usr/local/etc/php/conf.d/opcache.ini
+# 3. Configure PHP
+RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.max_accelerated_files=4000" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "realpath_cache_size=4096K" >> /usr/local/etc/php/conf.d/php.ini && \
+    echo "realpath_cache_ttl=600" >> /usr/local/etc/php/conf.d/php.ini
 
-# Configure nginx
+# 4. Configure nginx
 RUN mkdir -p /run/nginx /var/log/nginx && \
-    touch /var/log/nginx/access.log /var/log/nginx/error.log
+    touch /var/log/nginx/access.log /var/log/nginx/error.log && \
+    ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stderr /var/log/nginx/error.log
+
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx/symfony.conf /etc/nginx/conf.d/default.conf
 
-# Configure supervisor
+# 5. Configure supervisor
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Application setup
+# 6. Application setup
 WORKDIR /var/www/html
 
-# Copy application from builder stages
 COPY --from=builder /app .
 COPY --from=node_builder /app/public/build public/build/ 2>/dev/null || :
 
-# Create required directories
-RUN mkdir -p var/cache var/log public/uploads
-
-# Set permissions (safer approach)
-RUN chown -R www-data:www-data var public && \
+# 7. Set up permissions
+RUN set -ex; \
+    mkdir -p var/cache var/log public/uploads; \
+    chown -R www-data:www-data var public; \
     find var public -type d -exec chmod 775 {} \; && \
-    find var public -type f -exec chmod 664 {} \;
+    find var public -type f -exec chmod 664 {} \; && \
+    chmod +x bin/console
 
-# Entrypoint and healthcheck
+# 8. Healthcheck and entrypoint
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s \
+    CMD curl -f http://localhost/healthz || exit 1
+
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint
-
-HEALTHCHECK --interval=10s --timeout=3s --start-period=30s \
-    CMD curl -f http://localhost/ping || exit 1
 
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
