@@ -1,22 +1,22 @@
-name: Build and Deploy to EKS
+name: Deploy to EKS
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual triggers
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: 954976299895.dkr.ecr.us-east-1.amazonaws.com/webdev77
-  EKS_CLUSTER: webdev77  # Must match exact cluster name
+  EKS_CLUSTER: webdev77
   KUBE_NAMESPACE: default
   APP_ENV: prod
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Required for AWS IAM OIDC auth
+      id-token: write
       contents: read
 
     steps:
@@ -31,60 +31,34 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Login to Amazon ECR
-      id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
     - name: Build and push Docker image
-      id: build-image
+      env:
+        DB_HOST: ${{ secrets.DB_HOST }}
       run: |
-        # Use BuildKit for faster builds
-        DOCKER_BUILDKIT=1 docker build \
-          --build-arg APP_ENV=${{ env.APP_ENV }} \
-          -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
-          -t ${{ env.ECR_REPOSITORY }}:latest \
-          .
-        docker push ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-        docker push ${{ env.ECR_REPOSITORY }}:latest
-        echo "image=${{ env.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+        docker build --build-arg DB_HOST=$DB_HOST -t $ECR_REPOSITORY:$GITHUB_SHA .
+        docker push $ECR_REPOSITORY:$GITHUB_SHA
 
-    - name: Install kubectl and aws-iam-authenticator
+    - name: Configure kubectl
       uses: azure/setup-kubectl@v3
-      with:
-        version: 'latest'  # Always use latest kubectl
 
-    - name: Configure EKS access
+    - name: Deploy to EKS
+      env:
+        DATABASE_URL: "mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:3306/${{ secrets.DB_NAME }}?serverVersion=8.0"
       run: |
-        aws eks update-kubeconfig \
-          --region ${{ env.AWS_REGION }} \
-          --name ${{ env.EKS_CLUSTER }}
-
-    - name: Deploy to Kubernetes
-      run: |
-        # Set namespace context
-        kubectl config set-context --current --namespace=${{ env.KUBE_NAMESPACE }}
+        kubectl config set-context --current --namespace=$KUBE_NAMESPACE
         
-        # Apply configuration (idempotent)
+        # Create secrets
+        kubectl create secret generic symfony-secrets \
+          --from-literal=APP_SECRET='${{ secrets.APP_SECRET }}' \
+          --from-literal=DATABASE_URL='$DATABASE_URL' \
+          --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Apply configurations
         kubectl apply -f k8s/configmap.yaml
-        kubectl apply -f k8s/secret.yaml
-        
-        # Create deployment if missing
-        kubectl apply -f k8s/deployment.yaml || echo "Deployment already exists"
-        
-        # Update image
-        kubectl set image deployment/symfony-app \
-          symfony=${{ steps.build-image.outputs.image }}
-        
-        # Apply service
+        kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml
         
-        # Verify rollout
-        kubectl rollout status deployment/symfony-app --timeout=180s
-        
-        # Optional: Restart if config changed
-        kubectl rollout restart deployment/symfony-app
-
-    - name: Verify deployment
-      run: |
-        kubectl get deployments -n ${{ env.KUBE_NAMESPACE }}
-        kubectl get pods -n ${{ env.KUBE_NAMESPACE }}
-        kubectl get service symfony-service -n ${{ env.KUBE_NAMESPACE }}
+        # Verify
+        kubectl rollout status deployment/symfony-app --timeout=300s

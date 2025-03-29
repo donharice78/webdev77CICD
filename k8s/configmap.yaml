@@ -4,5 +4,4 @@ metadata:
   name: symfony-config
 data:
   APP_ENV: prod
-  DATABASE_URL: webdev77-cicd.cliageaoillm.us-east-1.rds.amazonaws.com
-  # Add other non-sensitive configuration here
+  TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
